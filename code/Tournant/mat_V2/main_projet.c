@@ -1,0 +1,70 @@
+#define FCY 6000000     
+#include "libpic30.h"   
+#include <xc.h> 
+#include"configuration.h"
+#include"rotation.h"
+
+int main(void) {
+    setup_PWM(); // OCxR peut aller de 1 ? 1199 (d?marre si 0)
+    enc_config();
+    _LATB8 = 1; // output pour test
+    _LATB11 = 1;
+    enc_reset(); // reset les pos
+    float ref1 = 0.5; // valeur autour de laquelle on varie
+    float ref2 = 0.5;
+    //OC1RS = PR2*ref1;
+    //OC2RS = PR2*ref2; // Valeur de base ajustée (surtout pour le démarage))
+    OC1RS = 1;
+    OC2RS = 1;
+    
+    float coef = 200;
+    
+    
+    int16_t dist_cm = 240;
+    
+    
+    int16_t dist_pos = mettre_to_pos(dist_cm);
+    
+    int16_t x = 0; //Variable pour les pos de roues
+    int16_t y = 0;
+    
+    signed err = 0; // signed = signed int 
+    int pwm1 = 0;
+    int pwm2 = 0;
+  
+    int16_t etape = 1;
+    
+    // Partie acceleration :
+    int16_t acc = 1;
+    int16_t timer = 24000; // Timer de 0.004s
+    float but1 = PR2*ref1;
+    float but2 = PR2*ref2;
+    
+    //T1CONbits.TCKPS = 01; // set le prescaler a 1:8
+    // taille de PR1 = 15bits => valeur max = 32 768
+    PR1 = 6000; // timer de t = 0.001s 
+    T1CONbits.TON = 1;  // starts timer 1
+    
+    uint16_t seuil = 11*180;
+        
+    
+    while(1) {
+        if(dist_pos < enc_getPos1()){  // Condition d'arret
+            OC1RS = 1;}
+        if(dist_pos < enc_getPos2()){
+            OC2RS = 1;}
+        if (etape == 0){
+            acceleration(but1, but2, acc,timer);
+            etape = 1;
+        }
+       
+       
+        if (etape == 1){
+            
+            v_avant(seuil);
+            etape = 2;
+            }
+        
+    }
+    return 0;
+}
